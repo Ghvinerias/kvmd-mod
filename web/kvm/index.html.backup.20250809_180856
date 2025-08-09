@@ -51,7 +51,6 @@
     <link rel="stylesheet" href="../share/css/kvm/system.css">
     <link rel="stylesheet" href="../share/css/kvm/keyboard.css">
     <link rel="stylesheet" href="../share/css/kvm/about.css">
-    <link rel="stylesheet" href="../share/css/kvm/battery.css">
     <link rel="stylesheet" href="../share/css/user.css">
     <script type="module">import {setRootPrefix} from "../share/js/vars.js";
       setRootPrefix("../");
@@ -142,47 +141,6 @@
           </div>
         </li>
       </div>
-      <li class="left" id="battery-nav-item">
-        <a class="menu-button" href="#"><img class="led-battery led-battery-full" id="battery-led" src="../share/svg/led-battery.svg"><span id="battery-text">0%</span></a>
-        <div class="menu" id="battery-dropdown">
-          <div class="text">
-            <table>
-                <tr>
-                  <td rowspan="2"><img class="sign" src="../share/svg/led-battery.svg"></td>
-                  <td style="line-height:1.5"><b>Battery Status</b></td>
-                </tr>
-                <tr>
-                  <td><sup style="line-height:1">Real-time battery monitoring and status information</sup></td>
-                </tr>
-              </table>
-            </div>
-            <hr>
-            <div class="text">
-              <table class="battery-info-table">
-                <tr>
-                  <td>Charge:</td>
-                  <td id="battery-percent-value">0%</td>
-                </tr>
-                <tr>
-                  <td>Status:</td>
-                  <td id="battery-status-value">Unknown</td>
-                </tr>
-                <tr>
-                  <td>Voltage:</td>
-                  <td id="battery-voltage-value">0.00V</td>
-                </tr>
-                <tr>
-                  <td>Rate:</td>
-                  <td id="battery-rate-value">N/A</td>
-                </tr>
-                <tr>
-                  <td>ETA:</td>
-                  <td id="battery-eta-value">N/A</td>
-                </tr>
-              </table>
-            </div>
-          </div>
-        </li>
       <li class="right" id="system-dropdown"><a class="menu-button" href="#"><img class="led-gray" id="link-led" src="../share/svg/led-link.svg"><img class="led-gray" id="stream-led" src="../share/svg/led-video.svg"><img class="led-gray" id="hid-keyboard-led" src="../share/svg/led-hid-keyboard.svg"><img class="led-gray" id="hid-mouse-led" src="../share/svg/led-hid-mouse.svg"><span>System</span></a>
         <div class="menu" id="system-menu">
           <table class="kv">

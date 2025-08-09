@@ -1,0 +1,110 @@
+/*****************************************************************************
+#                                                                            #
+#    KVMD - The main PiKVM daemon.                                           #
+#                                                                            #
+#    Copyright (C) 2018-2024  Maxim Devaev <mdevaev@gmail.com>               #
+#                                                                            #
+#    This program is free software: you can redistribute it and/or modify    #
+#    it under the terms of the GNU General Public License as published by    #
+#    the Free Software Foundation, either version 3 of the License, or       #
+#    (at your option) any later version.                                     #
+#                                                                            #
+#    This program is distributed in the hope that it will be useful,         #
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of          #
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the           #
+#    GNU General Public License for more details.                            #
+#                                                                            #
+#    You should have received a copy of the GNU General Public License       #
+#    along with this program.  If not, see <https://www.gnu.org/licenses/>.  #
+#                                                                            #
+*****************************************************************************/
+
+
+/* Battery LED styling */
+img.led-battery-full {
+	-webkit-transform: translateZ(0);
+	transform: translateZ(0);
+	-webkit-filter: var(--led-filter-green);
+	filter: var(--led-filter-green);
+}
+
+img.led-battery-high {
+	-webkit-transform: translateZ(0);
+	transform: translateZ(0);
+	-webkit-filter: var(--led-filter-green);
+	filter: var(--led-filter-green);
+}
+
+img.led-battery-medium {
+	-webkit-transform: translateZ(0);
+	transform: translateZ(0);
+	-webkit-filter: var(--led-filter-yellow);
+	filter: var(--led-filter-yellow);
+}
+
+img.led-battery-low {
+	-webkit-transform: translateZ(0);
+	transform: translateZ(0);
+	-webkit-filter: var(--led-filter-orange);
+	filter: var(--led-filter-orange);
+}
+
+img.led-battery-critical {
+	-webkit-transform: translateZ(0);
+	transform: translateZ(0);
+	-webkit-filter: var(--led-filter-red);
+	filter: var(--led-filter-red);
+}
+
+/* Battery info table styling */
+.battery-info-table {
+	width: 100%;
+	border-collapse: collapse;
+}
+
+.battery-info-table td {
+	padding: 4px 8px;
+	border: none;
+}
+
+.battery-info-table td:first-child {
+	font-weight: bold;
+	text-align: right;
+	width: 50%;
+}
+
+.battery-info-table td:last-child {
+	text-align: left;
+	width: 50%;
+}
+
+/* Battery dropdown positioning */
+#battery-nav-item {
+	position: relative;
+}
+
+#battery-dropdown {
+	min-width: 280px;
+}
+
+/* Always show battery nav item */
+#battery-nav-item {
+	display: block !important;
+}
+
+/* Ensure battery icon and text are always visible */
+.led-battery {
+	display: inline-block !important;
+}
+
+#battery-text {
+	font-size: 0.9em;
+	font-weight: bold;
+	margin-left: 5px;
+	display: inline !important;
+}
+
+/* Orange filter for battery low state */
+:root {
+	--led-filter-orange: invert(0.5) sepia(1) saturate(5) hue-rotate(25deg);
+}

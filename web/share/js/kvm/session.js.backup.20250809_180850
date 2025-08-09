@@ -36,7 +36,6 @@ import {Streamer} from "./stream.js";
 import {Gpio} from "./gpio.js";
 import {Ocr} from "./ocr.js";
 import {Switch} from "./switch.js";
-import {Battery} from "./battery.js";
 
 
 export function Session() {
@@ -59,7 +58,6 @@ export function Session() {
 	var __gpio = new Gpio(__recorder);
 	var __ocr = new Ocr(__streamer.getGeometry);
 	var __switch = new Switch();
-	var __battery = new Battery();
 
 	var __init__ = function() {
 		__streamer.ensureDeps(() => __startSession());
@@ -139,10 +137,6 @@ export function Session() {
 					__atx.setHasSwitch(event.model.ports.length > 0);
 				}
 				__switch.setState(event);
-				break;
-
-			case "battery": 
-				__battery.setState(event); 
 				break;
 		}
 	};
