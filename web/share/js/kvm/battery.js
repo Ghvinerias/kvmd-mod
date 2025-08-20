@@ -1,190 +1,229 @@
-/*****************************************************************************
-#                                                                            #
-#    KVMD - The main PiKVM daemon.                                           #
-#                                                                            #
-#    Copyright (C) 2018-2024  Maxim Devaev <mdevaev@gmail.com>               #
-#                                                                            #
-#    This program is free software: you can redistribute it and/or modify    #
-#    it under the terms of the GNU General Public License as published by    #
-#    the Free Software Foundation, either version 3 of the License, or       #
-#    (at your option) any later version.                                     #
-#                                                                            #
-#    This program is distributed in the hope that it will be useful,         #
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of          #
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the           #
-#    GNU General Public License for more details.                            #
-#                                                                            #
-#    You should have received a copy of the GNU General Public License       #
-#    along with this program.  If not, see <https://www.gnu.org/licenses/>.  #
-#                                                                            #
-*****************************************************************************/
-
-
-"use strict";
-
-
 import {tools, $} from "../tools.js";
 
-
 export function Battery() {
-	var self = this;
+    var self = this;
 
-	/************************************************************************/
+    var __state = null;
+    var __poll_timer = null;
+    var __poll_interval = 30000; // 30 seconds
 
-	var __state = null;
-	var __poll_timer = null;
-	var __poll_interval = 30000; // 30 seconds
+    var __unwrap = function(data) {
+        if (data && typeof data === "object" && data.result && typeof data.result === "object") {
+            return data.result;
+        }
+        return data;
+    };
 
-	var __init__ = function() {
-		// Start polling for battery data
-		__startPolling();
-	};
+    var __normalize = function(raw) {
+        raw = __unwrap(raw) || {};
+        let out = {...raw};
 
-	/************************************************************************/
+        out.available = (raw.available === undefined) ? true : !!raw.available;
 
-	self.setState = function(state) {
-		// This would be called by the WebSocket if kvmd provides battery data
-		// For now, we use HTTP polling since pipwrmonitor is external
-		if (state && state.available !== undefined) {
-			__updateBatteryDisplay(state);
-		}
-	};
+        let percent = Number(raw.percent);
+        out.percent = Number.isFinite(percent) ? percent : NaN;
 
-	var __startPolling = function() {
-		if (__poll_timer) {
-			clearInterval(__poll_timer);
-		}
-		
-		__pollBatteryStatus();
-		__poll_timer = setInterval(__pollBatteryStatus, __poll_interval);
-	};
+        let voltage = Number(raw.voltage);
+        out.voltage = Number.isFinite(voltage) ? voltage : NaN;
 
-	var __pollBatteryStatus = function() {
-		tools.httpGet("/api/battery", null, function(http) {
-			if (http.status === 200) {
-				try {
-					let data = JSON.parse(http.responseText);
-					__updateBatteryDisplay(data);
-				} catch (e) {
-					console.warn("Battery: Failed to parse response:", e);
-					__showBatteryError();
-				}
-			} else {
-				console.warn("Battery: API request failed:", http.status);
-				__showBatteryError();
-			}
-		}, function() {
-			console.warn("Battery: API request failed");
-			__showBatteryError();
-		});
-	};
+        let rate = raw.rate_per_hour;
+        if (typeof rate === "string") {
+            const n = Number(rate);
+            if (Number.isFinite(n)) rate = n;
+        }
+        out.rate_per_hour = rate;
 
-	var __updateBatteryDisplay = function(data) {
-		if (!data.available) {
-			__showBatteryError();
-			return;
-		}
+        let eta = raw.eta_hours;
+        if (typeof eta === "string") {
+            const n = Number(eta);
+            if (Number.isFinite(n)) eta = n;
+        }
+        out.eta_hours = eta;
 
-		__state = data;
+        out.status = (raw.status || "").toString().toLowerCase();
+        return out;
+    };
 
-		// Always show the battery nav item (remove any hidden classes)
-		let batteryNavItem = $("battery-nav-item");
-		if (batteryNavItem) {
-			batteryNavItem.style.display = "block";
-			tools.hidden.setVisible(batteryNavItem, true);
-		}
+    var __init__ = function() {
+        __startPolling();
+    };
 
-		// Update battery percentage text
-		$("battery-text").innerText = `${Math.round(data.percent)}%`;
+    self.setState = function(state) {
+        if (state) {
+            __updateBatteryDisplay(__normalize(state));
+        }
+    };
 
-		// Update battery LED based on status and percentage
-		let led = $("battery-led");
-		led.className = __getBatteryLedClass(data);
+    var __startPolling = function() {
+        if (__poll_timer) {
+            clearInterval(__poll_timer);
+        }
+        __pollBatteryStatus();
+        __poll_timer = setInterval(__pollBatteryStatus, __poll_interval);
+    };
 
-		// Update detailed information
-		$("battery-percent-value").innerText = `${data.percent.toFixed(1)}%`;
-		$("battery-voltage-value").innerText = `${data.voltage.toFixed(2)}V`;
-		$("battery-status-value").innerText = __formatStatus(data.status);
+    var __pollBatteryStatus = function() {
+        tools.httpGet("/api/battery", null, function(http) {
+            if (http.status === 200) {
+                try {
+                    let data = JSON.parse(http.responseText);
+                    __updateBatteryDisplay(data);
+                } catch (e) {
+                    console.warn("Battery: Failed to parse or render response:", e);
+                    __showBatteryError();
+                }
+            } else {
+                console.warn("Battery: API request failed:", http.status);
+                __showBatteryError();
+            }
+        }, function() {
+            console.warn("Battery: API request failed");
+            __showBatteryError();
+        });
+    };
 
-		if (typeof data.rate_per_hour === 'number') {
-			$("battery-rate-value").innerText = `${data.rate_per_hour.toFixed(2)}%/h`;
-		} else {
-			$("battery-rate-value").innerText = data.rate_per_hour;
-		}
+    var __updateBatteryDisplay = function(data) {
+        data = __normalize(data);
 
-		if (typeof data.eta_hours === 'number') {
-			$("battery-eta-value").innerText = __formatETA(data.eta_hours);
-		} else {
-			$("battery-eta-value").innerText = data.eta_hours || "N/A";
-		}
-	};
+        if (data.available === false && !Number.isFinite(data.percent)) {
+            __showBatteryError();
+            return;
+        }
 
-	var __showBatteryError = function() {
-		// Keep the battery nav item visible but show error state
-		let batteryNavItem = $("battery-nav-item");
-		if (batteryNavItem) {
-			batteryNavItem.style.display = "block";
-		}
-		
-		// Show error in the UI
-		$("battery-text").innerText = "N/A";
-		let led = $("battery-led");
-		led.className = "led-battery led-gray";
-		
-		__state = null;
-	};
+        __state = data;
 
-	var __getBatteryLedClass = function(data) {
-		let baseClass = "led-battery";
-		let statusClass = "";
-		
-		// Determine battery level class
-		if (data.percent >= 75) {
-			statusClass = "led-battery-full";
-		} else if (data.percent >= 50) {
-			statusClass = "led-battery-high";
-		} else if (data.percent >= 25) {
-			statusClass = "led-battery-medium";
-		} else if (data.percent >= 10) {
-			statusClass = "led-battery-low";
-		} else {
-			statusClass = "led-battery-critical";
-		}
+        let batteryNavItem = $("battery-nav-item");
+        if (batteryNavItem) {
+            batteryNavItem.style.display = "block";
+            if (tools.hidden && typeof tools.hidden.setVisible === "function") {
+                tools.hidden.setVisible(batteryNavItem, true);
+            }
+        }
 
-		// Override with status-specific colors
-		if (data.status === "charging") {
-			return `${baseClass} ${statusClass} led-green`;
-		} else if (data.status === "discharging" && data.percent < 20) {
-			return `${baseClass} ${statusClass} led-red`;
-		} else if (data.status === "discharging" && data.percent < 35) {
-			return `${baseClass} ${statusClass} led-yellow`;
-		} else {
-			return `${baseClass} ${statusClass} led-gray`;
-		}
-	};
+        let topPctText = Number.isFinite(data.percent) ? `${Math.round(data.percent)}%` : "N/A";
+        let topTextEl = $("battery-text");
+        if (topTextEl) topTextEl.innerText = topPctText;
 
-	var __formatStatus = function(status) {
-		switch (status) {
-			case "charging": return "Charging";
-			case "discharging": return "Discharging";
-			case "idle": return "Idle";
-			default: return "Unknown";
-		}
-	};
+        let led = $("battery-led");
+        if (led) led.className = __getBatteryLedClass(data);
 
-	var __formatETA = function(hours) {
-		if (hours < 1) {
-			return `${Math.round(hours * 60)}m`;
-		} else if (hours < 24) {
-			let h = Math.floor(hours);
-			let m = Math.round((hours - h) * 60);
-			return `${h}h ${m}m`;
-		} else {
-			let d = Math.floor(hours / 24);
-			let h = Math.round(hours % 24);
-			return `${d}d ${h}h`;
-		}
-	};
+        let percentEl = $("battery-percent-value");
+        if (percentEl) {
+            percentEl.innerText = Number.isFinite(data.percent) ? `${data.percent.toFixed(1)}%` : "N/A";
+        }
 
-	__init__();
+        let voltEl = $("battery-voltage-value");
+        if (voltEl) {
+            voltEl.innerText = Number.isFinite(data.voltage) ? `${data.voltage.toFixed(2)}V` : "N/A";
+        }
+
+        let statusEl = $("battery-status-value");
+        if (statusEl) {
+            statusEl.innerText = __formatStatus(data.status);
+        }
+
+        let rateEl = $("battery-rate-value");
+        if (rateEl) {
+            if (typeof data.rate_per_hour === "number" && Number.isFinite(data.rate_per_hour)) {
+                rateEl.innerText = `${data.rate_per_hour.toFixed(2)}%/h`;
+            } else {
+                rateEl.innerText = (data.rate_per_hour !== undefined && data.rate_per_hour !== null && data.rate_per_hour !== "") ? `${data.rate_per_hour}` : "N/A";
+            }
+        }
+
+        let etaEl = $("battery-eta-value");
+        if (etaEl) {
+            if (typeof data.eta_hours === "number" && Number.isFinite(data.eta_hours)) {
+                etaEl.innerText = __formatETA(data.eta_hours);
+            } else {
+                etaEl.innerText = (data.eta_hours !== undefined && data.eta_hours !== null && data.eta_hours !== "") ? `${data.eta_hours}` : "N/A";
+            }
+        }
+    };
+
+    var __showBatteryError = function() {
+        let batteryNavItem = $("battery-nav-item");
+        if (batteryNavItem) {
+            batteryNavItem.style.display = "block";
+        }
+
+        let topTextEl = $("battery-text");
+        if (topTextEl) topTextEl.innerText = "N/A";
+
+        let led = $("battery-led");
+        if (led) led.className = "led-battery led-gray";
+
+        let percentEl = $("battery-percent-value");
+        if (percentEl) percentEl.innerText = "N/A";
+
+        let voltEl = $("battery-voltage-value");
+        if (voltEl) voltEl.innerText = "N/A";
+
+        let statusEl = $("battery-status-value");
+        if (statusEl) statusEl.innerText = "Unknown";
+
+        let rateEl = $("battery-rate-value");
+        if (rateEl) rateEl.innerText = "N/A";
+
+        let etaEl = $("battery-eta-value");
+        if (etaEl) etaEl.innerText = "N/A";
+
+        __state = null;
+    };
+
+    var __getBatteryLedClass = function(data) {
+        let baseClass = "led-battery";
+        let statusClass = "";
+        const p = Number.isFinite(data.percent) ? data.percent : 0;
+
+        if (p >= 75) {
+            statusClass = "led-battery-full";
+        } else if (p >= 50) {
+            statusClass = "led-battery-high";
+        } else if (p >= 25) {
+            statusClass = "led-battery-medium";
+        } else if (p >= 10) {
+            statusClass = "led-battery-low";
+        } else {
+            statusClass = "led-battery-critical";
+        }
+
+        if (data.status === "charging") {
+            return `${baseClass} ${statusClass} led-green`;
+        } else if (data.status === "discharging" && p < 20) {
+            return `${baseClass} ${statusClass} led-red`;
+        } else if (data.status === "discharging" && p < 35) {
+            return `${baseClass} ${statusClass} led-yellow`;
+        } else {
+            return `${baseClass} ${statusClass} led-gray`;
+        }
+    };
+
+    var __formatStatus = function(status) {
+        switch (status) {
+            case "charging": return "Charging";
+            case "discharging": return "Discharging";
+            case "idle": return "Idle";
+            default: return "Unknown";
+        }
+    };
+
+    var __formatETA = function(hours) {
+        if (!Number.isFinite(hours)) {
+            return "N/A";
+        }
+        if (hours < 1) {
+            return `${Math.round(hours * 60)}m`;
+        } else if (hours < 24) {
+            let h = Math.floor(hours);
+            let m = Math.round((hours - h) * 60);
+            return `${h}h ${m}m`;
+        } else {
+            let d = Math.floor(hours / 24);
+            let h = Math.round(hours % 24);
+            return `${d}d ${h}h`;
+        }
+    };
+
+    __init__();
 }
